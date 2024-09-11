@@ -19,6 +19,9 @@ dot -Tpng -o AML-59-001_tree.png AML-59-001_tree.gv
 
 Graphviz is required in order to plot the tree, which can be installed on Ubuntu by running `sudo apt-get install graphviz `
 
+> [!WARNING]  
+> If you are using macOS and fail to compile COMPASS because of openMP errors, please download this alternative version which does not use openMP: https://github.com/cbg-ethz/COMPASS/archive/refs/heads/no_OMP.zip.
+
 ## Usage
 
 `./COMPASS -i [sample_name] -o [output_name] --nchains 4 --chainlength 5000 --CNA 1 --sex female`
