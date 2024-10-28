@@ -74,7 +74,7 @@ def read_centromere(centromere_file):
     return d
 
 def convert_loom(infile,outdir, min_GQ, min_DP, min_AF, min_frac_cells_genotyped, min_frac_loci_genotyped,min_frac_cells_alt, region="gene",\
-                    reference=37,verbose=True,SNP_file=None,panel_file=None,whitelist_file=None,centromere=None):
+                    reference=37,verbose=True,SNP_file=None,panel_file=None,whitelist_file=None,centromere=None,restricted_file=None):
     if region=="chromosome_arm" and centromere is None:
         raise("If regions are chromosome arms, then centromeres must be provided.")
     if centromere is not None:
@@ -86,6 +86,17 @@ def convert_loom(infile,outdir, min_GQ, min_DP, min_AF, min_frac_cells_genotyped
     basename = os.path.basename(infile)[:-5]
     if SNP_file != None:
         SNP_f = open(SNP_file,"r")
+
+    # if restricted loci are provided
+    use_restricted = False
+    if restricted_file is not None:
+        print("Restricted list of loci provided...")
+        use_restricted = True
+        restricted_positions = []
+        restricted_tsv = open(restricted_file, "r")
+        for line in restricted_tsv:
+            restricted_positions.append(line.strip('\n'))
+        restricted_tsv.close()
 
     # If selected mutations were already provided
     whitelist=[]
@@ -181,14 +192,16 @@ def convert_loom(infile,outdir, min_GQ, min_DP, min_AF, min_frac_cells_genotyped
         candidate_loci = []
         for i in sorted_loci:
             chr_pos = str(chromosomes_full[i])+"_"+str(positions_full[i])
-            if use_whitelist:
-                if chr_pos in whitelist_positions: candidate_loci.append(i)
-            else:
-                if chr_pos in blacklist: continue
-                n_alt = np.sum( (genotypes[i,:]==1) | (genotypes[i,:]==2) )
-                n_unknown = np.sum( (genotypes[i,:]==3))
-                if n_alt / n_cells_full >= min_frac_cells_alt and n_unknown / n_cells_full < (1-0.5*min_frac_cells_genotyped):
-                    candidate_loci.append(i)
+
+            if not use_restricted or chr_pos in restricted_positions:
+                if use_whitelist:
+                    if chr_pos in whitelist_positions: candidate_loci.append(i)
+                else:
+                    if chr_pos in blacklist: continue
+                    n_alt = np.sum( (genotypes[i,:]==1) | (genotypes[i,:]==2) )
+                    if n_alt / n_cells_full >= min_frac_cells_alt:
+                        candidate_loci.append(i)
+
         del genotypes
         #print("Number of candidate loci: " + str(len(candidate_loci)))
 
@@ -605,13 +618,14 @@ parser.add_argument('--SNP', type = str,default = None, help='File containing th
 parser.add_argument('--region', type = str,default = "gene", help='Which region to use for CNVs (amplicon, gene, chromosome_arm or chromosome)')
 parser.add_argument('--panel', type = str,default = None, help='CSV metadata file for the amplicons. Useful to get the correct name of the amplicons.')
 parser.add_argument('--whitelist', type = str,default = None, help='CSV file containing the mutations to always include')
+parser.add_argument('--restricted', type = str,default = None, help='TSV file containing variant sites that may be selected from for analysis')
 parser.add_argument('--centromere', type = str,default = None, help='File containing the centromere position for each chromosome.')
 parser.add_argument('--ref', type = int,default = 37, help='Reference genome (37 or 38)')
 args = parser.parse_args()
 
 if len(args.i)>5 and args.i[-5:]==".loom": # Preprocess a single loom file
-    convert_loom(args.i,args.o,15,6,0.2,0.7,0.4,0.015,region=args.region, reference=args.ref,verbose=True,SNP_file=args.SNP,panel_file = args.panel, whitelist_file = args.whitelist,centromere=args.centromere)
+    convert_loom(args.i,args.o,15,6,0.2,0.7,0.4,0.015,region=args.region, reference=args.ref,verbose=True,SNP_file=args.SNP,panel_file = args.panel, whitelist_file = args.whitelist, restricted_file = args.restricted,centromere=args.centromere)
 else: # Preprocess a whole directory of loom files
     for f in sorted(os.listdir(args.i)):
         if len(f)>5 and f[-5:]==".loom":
-            convert_loom(os.path.join(args.i,f),args.o,15,6,0.2,0.7,0.4,0.015,region=args.region,reference=args.ref,verbose=True,SNP_file=args.SNP,panel_file = args.panel,whitelist_file=args.whitelist,centromere=args.centromere)
+            convert_loom(os.path.join(args.i,f),args.o,15,6,0.2,0.7,0.4,0.015,region=args.region,reference=args.ref,verbose=True,SNP_file=args.SNP,panel_file = args.panel,whitelist_file=args.whitelist, restricted_file=args.restricted,centromere=args.centromere)
