@@ -107,6 +107,8 @@ def convert_loom(infile,outdir, min_GQ, min_DP, min_AF, min_frac_cells_genotyped
         chromosomes_full = ds.ra["CHROM"]
         chromosomes_full = [str(chr) for chr in chromosomes_full]
         positions_full = ds.ra["POS"]
+        barcodes = ds.ca["barcode"]
+
         # The loom files appear to not always be sorted. (or partially sorted...)
         # reorder loci by position and chromosome
         chr_order = ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y"]
@@ -412,7 +414,7 @@ def convert_loom(infile,outdir, min_GQ, min_DP, min_AF, min_frac_cells_genotyped
 
         variants_info = {"CHR":[],"POS":[],"REF":[],"ALT":[],"REGION":[],"NAME":[],"FREQ":[]}
         for j in range(n_cells):
-            variants_info[str(j)]=[]
+            variants_info[str(barcodes[j])]=[]
 
         for i,locus in enumerate(filtered_loci):
             variants_info["CHR"].append(chromosomes[locus])
@@ -434,10 +436,10 @@ def convert_loom(infile,outdir, min_GQ, min_DP, min_AF, min_frac_cells_genotyped
             else: variants_info["FREQ"].append(0)
             for j in range(n_cells):
                 if (GQ[filtered_loci[i],filtered_cells[j]]>0.1):
-                    variants_info[str(j)].append(str(int(RO[filtered_loci[i],filtered_cells[j]])) + ":" + str(int(AD[filtered_loci[i],filtered_cells[j]])) \
+                    variants_info[str(barcodes[j])].append(str(int(RO[filtered_loci[i],filtered_cells[j]])) + ":" + str(int(AD[filtered_loci[i],filtered_cells[j]])) \
                                                 + ":" + str(int(genotypes[filtered_loci[i],filtered_cells[j]])))
                 else: # if genotype quality is 0, consider that we have no reads, as the reads are most likely unreliable
-                    variants_info[str(j)].append("0:0:3")
+                    variants_info[str(barcodes[j])].append("0:0:3")
         df_variants = pd.DataFrame(variants_info)
         df_variants.to_csv(os.path.join(outdir,basename+"_variants.csv"),index=False,header=True)
 
